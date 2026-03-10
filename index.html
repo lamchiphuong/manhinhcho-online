@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MÀN HÌNH CHỜ LỚP ONLINE </title>
+  <title>MÀN HÌNH CHỜ LỚP ONLINE</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   
@@ -205,13 +205,13 @@
       <div class="subtitle" id="subtitleText">Lớp học sẽ bắt đầu sau vài phút nữa...</div>
     </div>
     <div class="control-bar">
-      <button class="ctrl-btn" id="toggleSound" title="Sound"><i class="fas fa-volume-up" id="soundIcon"></i></button>
-      <button class="ctrl-btn" id="fullscreenBtn" title="Fullscreen"><i class="fas fa-expand"></i></button>
+      <button class="ctrl-btn" id="toggleSound" title="Bật/Tắt âm thanh"><i class="fas fa-volume-up" id="soundIcon"></i></button>
+      <button class="ctrl-btn" id="fullscreenBtn" title="Toàn màn hình"><i class="fas fa-expand"></i></button>
     </div>
     <div id="effectLayer" class="bg-effect"></div>
   </div>
 
-  <audio id="bgMusic" loop></audio>
+  <audio id="bgMusic" loop preload="auto"></audio>
 
   <script>
     const translations = {
@@ -223,7 +223,7 @@
         effect: "Chọn hiệu ứng nền",
         music: "Nhạc nền",
         cancel: "Hủy",
-        start: "DÙNG THỬ (DEMO)",
+        start: "DÙNG THỬ (DEMO - không nhạc nền)",
         start_unlocked: "BẮT ĐẦU NGAY",
         defaultMsg: "Chào mừng các em đến với lớp học online của chúng ta!",
         subtitle: "Lớp học sẽ bắt đầu sau vài phút nữa...",
@@ -275,8 +275,17 @@
     const startBtn = document.getElementById('startBtn');
     let isMuted = false;
     let currentLang = 'vi';
-    let isUnlocked = localStorage.getItem('waitingScreenUnlocked') === 'true'; // Kiểm tra trạng thái đã unlock
+    let isUnlocked = localStorage.getItem('waitingScreenUnlocked') === 'true';
     let demoTimer = null;
+    let autoplayAlertShown = false;
+
+    // Unlock audio context bằng click đầu tiên trên trang
+    document.body.addEventListener('click', () => {
+      if (audio.muted) {
+        audio.muted = false;
+        audio.play().catch(() => console.log('Audio context unlocked'));
+      }
+    }, { once: true });
 
     function updateStartButtonText() {
       const key = isUnlocked ? 'start_unlocked' : 'start';
@@ -288,27 +297,21 @@
       currentLang = lang;
       document.querySelectorAll('[data-lang]').forEach(el => {
         const key = el.getAttribute('data-lang');
-        if (translations[lang][key]) {
-          el.textContent = translations[lang][key];
-        }
+        if (translations[lang][key]) el.textContent = translations[lang][key];
       });
 
       const textarea = document.getElementById('welcomeMsg');
       const currentText = textarea.value.trim();
-
       if (currentText === translations.vi.defaultMsg || 
-          currentText === translations.en.defaultMsg ||
-          currentText === '') {
+          currentText === translations.en.defaultMsg || currentText === '') {
         textarea.value = translations[lang].defaultMsg;
       }
 
       updateStartButtonText();
     }
 
-    // Khởi tạo nút ban đầu
     updateStartButtonText();
 
-    // Ngôn ngữ
     document.querySelectorAll('[data-lang="vi"], [data-lang="en"]').forEach(item => {
       item.addEventListener('click', () => {
         document.querySelectorAll('[data-lang="vi"], [data-lang="en"]').forEach(i => i.classList.remove('selected'));
@@ -317,7 +320,6 @@
       });
     });
 
-    // Chọn item (effect, music)
     document.querySelectorAll('.item').forEach(item => {
       if (!item.hasAttribute('data-lang') || !['vi','en'].includes(item.getAttribute('data-lang'))) {
         item.addEventListener('click', () => {
@@ -328,13 +330,11 @@
       }
     });
 
-    // Fullscreen
     document.getElementById('fullscreenBtn').onclick = () => {
-      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-      else document.exitFullscreen();
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+      else document.exitFullscreen().catch(()=>{});
     };
 
-    // Toggle âm thanh
     document.getElementById('toggleSound').onclick = () => {
       isMuted = !isMuted;
       audio.muted = isMuted;
@@ -342,7 +342,6 @@
       soundIcon.classList.toggle('fa-volume-mute', isMuted);
     };
 
-    // Bắt đầu màn hình chờ
     document.getElementById('startBtn').onclick = () => {
       const msg = document.getElementById('welcomeMsg').value.trim() || translations[currentLang].defaultMsg;
       const mins = parseInt(document.getElementById('waitTime').value) || 10;
@@ -358,26 +357,41 @@
       startEffect(effect);
 
       if (selectedMusicKey !== 'none' && musicList[selectedMusicKey]) {
+        audio.pause();
         audio.src = musicList[selectedMusicKey];
         audio.volume = 0.35;
-        audio.play().catch(() => {});
+        audio.muted = false;
         isMuted = false;
         soundIcon.classList.remove('fa-volume-mute');
         soundIcon.classList.add('fa-volume-up');
+
+        audio.load();
+        audio.currentTime = 0;
+
+        audio.play()
+          .then(() => console.log(`Phát thành công: ${selectedMusicKey}`))
+          .catch(err => {
+            console.error('Autoplay bị chặn:', err);
+            isMuted = true;
+            audio.muted = true;
+            soundIcon.classList.remove('fa-volume-up');
+            soundIcon.classList.add('fa-volume-mute');
+            if (!autoplayAlertShown) {
+              alert("Trình duyệt chặn phát nhạc tự động.\nNhấn nút loa để bật nhạc.");
+              autoplayAlertShown = true;
+            }
+          });
       } else {
-        audio.src = ''; 
         audio.pause();
+        audio.src = '';
         isMuted = true;
         soundIcon.classList.remove('fa-volume-up');
         soundIcon.classList.add('fa-volume-mute');
       }
 
-      // Nếu chưa unlock → đếm ngược 60 giây để hiện popup unlock
       if (!isUnlocked) {
         demoTimer = setTimeout(() => {
-          if (!isUnlocked) {
-            showUnlockPopup();
-          }
+          if (!isUnlocked) showUnlockPopup();
         }, 60000);
       }
     };
@@ -388,29 +402,29 @@
       audio.pause();
     }
 
-    // Xử lý nút kích hoạt mã
     document.getElementById('submitUnlock').onclick = () => {
       const code = document.getElementById('unlockCode').value.trim().toUpperCase();
       if (code === 'XD56BL00') {
         isUnlocked = true;
-        localStorage.setItem('waitingScreenUnlocked', 'true'); // Lưu trạng thái unlock
+        localStorage.setItem('waitingScreenUnlocked', 'true');
         clearTimeout(demoTimer);
         document.getElementById('unlockPopup').style.display = 'none';
         document.getElementById('waitingScreen').style.filter = 'none';
-        if (audio.src) audio.play().catch(() => {});
-
-        updateStartButtonText(); // Cập nhật nút ngay lập tức
-
+        if (audio.src) {
+          audio.muted = false;
+          isMuted = false;
+          soundIcon.classList.remove('fa-volume-mute');
+          soundIcon.classList.add('fa-volume-up');
+          audio.play().catch(() => {});
+        }
+        updateStartButtonText();
         document.getElementById('errorMsg').style.display = 'none';
       } else {
         document.getElementById('errorMsg').style.display = 'block';
       }
     };
 
-    // Nút đóng popup unlock → reload
-    document.getElementById('closeUnlock').onclick = () => {
-      location.reload();
-    };
+    document.getElementById('closeUnlock').onclick = () => location.reload();
 
     function startTimer(totalSeconds) {
       let s = totalSeconds;
@@ -432,10 +446,7 @@
       }, 1000);
     }
 
-    // ────────────────────────────────────────────────
-    // Các hàm hiệu ứng nền (giữ nguyên như code cũ)
-    // ────────────────────────────────────────────────
-
+    // Các hàm hiệu ứng nền (đồng bộ từ file chạy tốt, giữ nguyên chi tiết)
     function createFirework() {
       const layer = document.getElementById('effectLayer');
       const colors = ['#ff0000','#ffd700','#ff8c00','#ff1493','#00ff00','#00ffff','#ff4500','#ff69b4','#ffffff'];
@@ -796,7 +807,6 @@
       }, intervalTime);
     }
 
-    // Khởi tạo ngôn ngữ lần đầu
     applyLanguage('vi');
   </script>
 </body>
