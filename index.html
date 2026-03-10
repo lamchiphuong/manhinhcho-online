@@ -175,7 +175,7 @@
       <div class="popup-body">
         <p style="margin-bottom:20px; line-height:1.5;">
           Bản demo chỉ cho phép xem thử trong 60 giây.<br>
-          Vui lòng nhập mã kích hoạt để sử dụng đầy đủ không giới hạn:
+          Vui lòng nhập mã kích hoạt (8 ký tự) để sử dụng đầy đủ không giới hạn:
         </p>
         <div class="input-group">
           <label>Mã kích hoạt</label>
@@ -391,7 +391,7 @@
     // Xử lý nút kích hoạt mã
     document.getElementById('submitUnlock').onclick = () => {
       const code = document.getElementById('unlockCode').value.trim().toUpperCase();
-      if (code === 'KX5D749') {
+      if (code === 'XD56BL00') {
         isUnlocked = true;
         localStorage.setItem('waitingScreenUnlocked', 'true'); // Lưu trạng thái unlock
         clearTimeout(demoTimer);
